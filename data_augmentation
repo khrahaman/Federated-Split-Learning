@@ -1,0 +1,45 @@
+#data augmentation for AlexNet and ResNet
+
+import numpy as np
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+# For AlexNet: Dataset (FMNIST) Loading and Preprocessing
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.fashion_mnist.load_data()
+
+# For ResNet18: Dataset (MNIST) Loading and Preprocessing
+#(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+
+x_train = x_train.astype("float32") / 255.0
+x_test = x_test.astype("float32") / 255.0
+
+# Add channel dimension
+x_train = x_train[..., np.newaxis]
+x_test = x_test[..., np.newaxis]
+
+# Define data augmentation
+datagen = ImageDataGenerator(
+    rotation_range=10,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
+    shear_range=5,
+)
+
+# Calculate the number of augmented samples needed
+num_augmented_samples = int(0.5 * len(x_train))
+
+# Generate augmented samples
+augmented_x_train = []
+augmented_y_train = []
+for x, y in datagen.flow(x_train, y_train, batch_size=32):
+    augmented_x_train.append(x)
+    augmented_y_train.append(y)
+    if len(augmented_x_train) * 32 >= num_augmented_samples:
+        break
+
+# Convert lists to arrays
+augmented_x_train = np.concatenate(augmented_x_train, axis=0)[:num_augmented_samples]
+augmented_y_train = np.concatenate(augmented_y_train, axis=0)[:num_augmented_samples]
+
+# Concatenate original and augmented data
+x_train = np.concatenate((x_train, augmented_x_train), axis=0)
+y_train = np.concatenate((y_train, augmented_y_train), axis=0)
