@@ -6,7 +6,7 @@ from tensorflow.keras.layers import Input, Conv2D, AveragePooling2D, Flatten, De
 #Built for CIFAR-10 Dataset
 def build_split_model(input_shape=(32, 32, 3), num_classes=10):
 
-    with tf.device('/cpu:0'):
+    with tf.device('/cpu:0'): #Low-CC clients use only Intel Xeon CPU in our implementation
         inputs_client = Input(shape=input_shape)
         # C1: 6 filters, 5x5, tanh
         x = Conv2D(6, (5, 5), activation='tanh', padding='valid', name='C1')(inputs_client)
@@ -15,8 +15,8 @@ def build_split_model(input_shape=(32, 32, 3), num_classes=10):
         client_model = models.Model(inputs_client, outputs= client_output) #Client Side Output
 
 
-    with tf.device('/gpu:0'):
-        inputs_gateway = Input(shape = client_model.output.shape[1:]) #Edge Gateway Side Input
+    with tf.device('/gpu:0'): #In our implementation, P100 GPU acts as the edge server
+        inputs_gateway = Input(shape = client_model.output.shape[1:]) #Edge Server Side Input
         # C3: 16 filters, 5x5, tanh
         x = Conv2D(16, (5, 5), activation='tanh', padding='valid', name='C3')(inputs_gateway)
         # S4: Average pooling 2x2, stride 2
@@ -29,7 +29,7 @@ def build_split_model(input_shape=(32, 32, 3), num_classes=10):
         x = Dense(84, activation='tanh', name='F6')(x)
         # Output: Softmax for 10 classes
         outputs = Dense(num_classes, activation='softmax', name='Output')(x)
-        gateway_model = Model(inputs_gateway, outputs, name='LeNet-5_CIFAR10') #Edge Gateway Side Output
+        gateway_model = Model(inputs_gateway, outputs, name='LeNet-5_CIFAR10') #Edge Server Side Output
 
 
     return client_model, gateway_model
