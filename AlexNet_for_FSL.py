@@ -5,7 +5,7 @@ from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense,
 #Built for FMNIST Dataset
 def build_split_model(input_shape=(28, 28, 1), num_classes=10):
 
-    with tf.device('/cpu:0'):
+    with tf.device('/cpu:0'): #Low-CC clients are using the Intel Xeon CPU
         inputs_client = Input(shape=input_shape)
         # Conv1: 32 filters (original: 96), 5x5, stride=1
         x = Conv2D(32, (5, 5), strides=1, activation='relu', padding='same', name='Conv1')(inputs_client)
@@ -17,9 +17,9 @@ def build_split_model(input_shape=(28, 28, 1), num_classes=10):
         client_model = models.Model(inputs=inputs_client, outputs=client_output) #Client Side Output
 
 
-    with tf.device('/gpu:0'):
+    with tf.device('/gpu:0'): #In our implementation, the P100 GPU acts the edge server
         # Conv3-5: 64 filters (original: 384/256)
-        input_gateway = Input(shape=client_model.output_shape[1:]) #Edge Gateway Side Input
+        input_gateway = Input(shape=client_model.output_shape[1:]) #Edge Server Side Input
         x = Conv2D(64, (3, 3), activation='relu', padding='same', name='Conv3')(input_gateway)
         x = Conv2D(64, (3, 3), activation='relu', padding='same', name='Conv4')(x)
         x = Conv2D(64, (3, 3), activation='relu', padding='same', name='Conv5')(x)
@@ -32,5 +32,5 @@ def build_split_model(input_shape=(28, 28, 1), num_classes=10):
         x = Dense(512, activation='relu', name='FC2')(x)
         x = Dropout(0.5)(x)
         outputs = Dense(num_classes, activation='softmax', name='Output')(x)
-        gateway_model = Model(input_gateway, outputs, name='AlexNet_FashionMNIST_Light') #Edge Gateway Side Output
+        gateway_model = Model(input_gateway, outputs, name='AlexNet_FashionMNIST_Light') #Edge Server Side Output
     return client_model, gateway_model
