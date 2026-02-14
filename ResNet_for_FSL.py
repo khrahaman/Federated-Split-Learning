@@ -1,7 +1,7 @@
-#ResNet18 (cut layer: 3rd layer)
+#ResNet-i (cut layer: Before the First Residual Block)
 
 def build_split_model(input_shape=(28, 28, 1), num_classes=10):
-    with tf.device('/cpu:0'):
+    with tf.device('/cpu:0'): #Low-CC clients use only Intel Xeon CPU in our implementation
         inputs_client = layers.Input(shape=input_shape)
         x = layers.Rescaling(1./255)(inputs_client)
         
@@ -11,7 +11,7 @@ def build_split_model(input_shape=(28, 28, 1), num_classes=10):
         client_output = layers.ReLU()(x) #Cut Layer
         client_model = models.Model(inputs=inputs_client, outputs=client_output) #Client Side Output
 
-    with tf.device('/gpu:0'):
+    with tf.device('/gpu:0'): #In our implementation, P100 GPU acts as the edge server
         # Residual blocks (3 stages)
         def residual_block(x, filters, downsample=False):
             shortcut = x
@@ -28,7 +28,7 @@ def build_split_model(input_shape=(28, 28, 1), num_classes=10):
             x = layers.ReLU()(x)
             return x
 
-        input_gateway = layers.Input(shape=client_model.output.shape[1:]) #Edge Gateway Side Input
+        input_gateway = layers.Input(shape=client_model.output.shape[1:]) #Edge Server Side Input
         # Stage 1-3
         x = residual_block(input_gateway, 32)  # Stage 1
         x = residual_block(x, 32)
@@ -40,5 +40,5 @@ def build_split_model(input_shape=(28, 28, 1), num_classes=10):
         # Final layers
         x = layers.GlobalAveragePooling2D()(x)
         outputs = layers.Dense(num_classes, activation='softmax')(x)
-        gateway_model = models.Model(inputs=input_gateway, outputs=outputs) #Edge Gateway Side Output
+        gateway_model = models.Model(inputs=input_gateway, outputs=outputs) #Edge Server Side Output
     return client_model, gateway_model
